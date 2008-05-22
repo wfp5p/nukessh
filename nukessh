@@ -1,0 +1,57 @@
+#!/bin/bsh
+#
+# nukessh       This shell script takes care of starting and stopping
+#               nukessh
+# 
+
+[ -f /etc/uva/nukessh/nukessh.pl ] || exit 0
+
+# Get sshd2 pid file & pid
+
+PIDFILE=/etc/uva/nukessh/nukessh.pid
+
+if test -f "$PIDFILE"
+then
+  DAEMON_PID=`cat $PIDFILE`
+fi
+
+# See how we were called.
+
+case "$1" in
+  start)
+	# Start daemons.
+	echo "Starting nukessh"
+	/etc/uva/nukessh/nukessh.pl >/etc/uva/nukessh/nukessh.pid
+        RETVAL=$?
+        echo
+        [ $RETVAL -eq 0 ] && touch /var/locks/nukessh
+	;;
+  stop)
+	# Stop daemons.
+        if test -n "$DAEMON_PID"
+        then
+          echo "Shutting down nukessh"
+	  kill $DAEMON_PID
+	  RETVAL=$?
+          echo
+          [ $RETVAL -eq 0 ] && rm -f /var/locks/nukessh
+        else
+          RETVAL=1
+          echo 
+        fi
+
+        if test -f "$PIDFILE"
+        then
+          rm -f $PIDFILE
+        fi
+	;;
+  restart)
+	$0 stop
+	$0 start
+	;;
+  *)
+	echo "Usage: nukessh {start|stop|restart}"
+	exit 1
+esac
+
+exit $RETVAL
