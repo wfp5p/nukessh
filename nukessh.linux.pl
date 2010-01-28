@@ -11,6 +11,8 @@ use FileHandle;
 
 
 $READLOG='/var/log/messages';
+# in newer versions of Fedora, this should be /var/log/secure
+
 $LOGFILE='/etc/uva/nukessh/nukessh.log';
 $NUKEDBM='/etc/uva/nukessh/nukedbm';
 $EXPIRECYCLE = 3600;
