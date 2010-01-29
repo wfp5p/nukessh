@@ -4,23 +4,23 @@
 
 use strict;
 use POSIX;
+
 use File::Tail;
 use Socket;
 use GDBM_File;
 use Getopt::Long;
-use FileHandle;
+
+use Log::Dispatch;
+use Log::Dispatch::Screen;
+
+
 
 our ($DEBUG, $DEBUGOPT, $LOG, $NOW);
 our %DBM;
 our %ipcount;
 
-
 my $DUMPTABLE = 0;
-
-
-my $READLOG='/var/log/secure';
-# This may be /var/log/messages for some systems
-
+my $READLOG='/var/log/secure'; # This may be /var/log/messages for some systems
 my $LOGFILE='/etc/uva/nukessh/nukessh.log';
 my $NUKEDBM='/etc/uva/nukessh/nukedbm';
 my $EXPIRECYCLE = 3600;
@@ -44,8 +44,21 @@ open(STDERR,">/dev/null");
 exit 0 if (fork());
 setsid;
 
-$LOG = new FileHandle ">> $LOGFILE";
-$LOG->autoflush(1);
+# set up logging
+
+sub addTS # add a timestamp to the log entry
+{
+    my %p = @_;
+
+    return strftime("%b %e %H:%M:%S %Y ",localtime) . $p{message} . "\n";
+}
+
+
+$LOG = Log::Dispatch->new;
+$LOG->add(Log::Dispatch::File->new(name => 'logfile',
+				   min_level => 'debug',
+				   callbacks => \&addTS));
+
 
 ## no critic
 
@@ -76,9 +89,8 @@ sub logIt
 
   return if ( (! $DEBUG) && ( ! $force) );
 
-  my $now_string = strftime "%b %e %H:%M:%S %Y", localtime();
+  $LOG->log(level=>'debug', message => $message);
 
-  print $LOG "$now_string $message\n";
 }
 
 sub blockHost
