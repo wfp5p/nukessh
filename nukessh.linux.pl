@@ -18,8 +18,8 @@ our %ipcount;
 my $DUMPTABLE = 0;
 
 
-my $READLOG='/var/log/messages';
-# in newer versions of Fedora, this should be /var/log/secure
+my $READLOG='/var/log/secure';
+# This may be /var/log/messages for some systems
 
 my $LOGFILE='/etc/uva/nukessh/nukessh.log';
 my $NUKEDBM='/etc/uva/nukessh/nukedbm';
