@@ -1,7 +1,8 @@
-#! /uva/bin/perl
+#! /usr/bin/perl
 
 # Linux version uses iptable and parses OpenSSH logs
 
+use strict;
 use POSIX;
 use File::Tail;
 use Socket;
@@ -9,25 +10,36 @@ use GDBM_File;
 use Getopt::Long;
 use FileHandle;
 
+our ($DEBUG, $DEBUGOPT, $LOG, $NOW);
+our %DBM;
+our %ipcount;
 
-$READLOG='/var/log/messages';
+
+my $DUMPTABLE = 0;
+
+
+my $READLOG='/var/log/messages';
 # in newer versions of Fedora, this should be /var/log/secure
 
-$LOGFILE='/etc/uva/nukessh/nukessh.log';
-$NUKEDBM='/etc/uva/nukessh/nukedbm';
-$EXPIRECYCLE = 3600;
-$EXPIRE=43200; # how long a host stays blocked
-$DECAY=10;
-$THRESHOLD=100;
+my $LOGFILE='/etc/uva/nukessh/nukessh.log';
+my $NUKEDBM='/etc/uva/nukessh/nukedbm';
+my $EXPIRECYCLE = 3600;
+my $EXPIRE=43200; # how long a host stays blocked
+my $DECAY=10;
+my $THRESHOLD=100;
 
 GetOptions('debug',\$DEBUGOPT);
 
 $DEBUG=1 if ($DEBUGOPT);
 
 # run in background
+## no critic
+
 open(STDIN,"</dev/null");
 open(STDOUT,">/dev/null");
 open(STDERR,">/dev/null");
+
+## use critic
 
 exit 0 if (fork());
 setsid;
@@ -35,12 +47,15 @@ setsid;
 $LOG = new FileHandle ">> $LOGFILE";
 $LOG->autoflush(1);
 
+## no critic
+
 tie %DBM, "GDBM_File", $NUKEDBM, O_RDWR|O_CREAT, 0640
    or die "Unable to open DBM database";
 
+## use critic
 
 
-$nextExpireRun = time + $EXPIRECYCLE;
+my $nextExpireRun = time + $EXPIRECYCLE;
 
 $SIG{USR1}=\&flip_debug;
 $SIG{USR2}=\&set_dump;
@@ -114,8 +129,8 @@ sub dumpTable
       logIt ("  $key $val");
    }
 
-   undef $DUMPTABLE;
-   $DEBUG = saveDebug;
+   $DUMPTABLE = 0;
+   $DEBUG = $saveDebug;
 }
 
 
@@ -148,9 +163,11 @@ sub expireHosts
 
 }
 
-$file = File::Tail->new(name=>$READLOG, maxinterval=>10);
+my $file = File::Tail->new(name=>$READLOG, maxinterval=>10);
 
 logIt ("nukessh started",1);
+
+my $line;
 
 while (defined ($line=$file->read))
 {
