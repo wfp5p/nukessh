@@ -50,7 +50,7 @@ chkconfig nukessh on
 
 %preun
 
-/sbin/service nukessh stop
+#/sbin/service nukessh stop
 
 %postun
 
