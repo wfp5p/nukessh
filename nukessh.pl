@@ -27,8 +27,11 @@ my $EXPIRECYCLE = 3600;
 my $EXPIRE=43200; # how long a host stays blocked
 my $DECAY=10;
 my $THRESHOLD=100;
+my $PIDFILE;
 
-GetOptions('debug',\$DEBUGOPT);
+
+GetOptions('debug',\$DEBUGOPT,
+	   'pidfile=s', \$PIDFILE);
 
 $DEBUG=1 if ($DEBUGOPT);
 
@@ -43,7 +46,17 @@ open(STDERR,">/dev/null");
 
 ## use critic
 
-exit 0 if (fork());
+if (my $pid = fork())
+{
+    if ($PIDFILE)
+    {
+	open my $outfile, '>', $PIDFILE;
+	print $outfile "$pid\n";
+	close $outfile;
+    }
+    exit 0;
+}
+
 setsid;
 
 # set up logging
