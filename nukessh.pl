@@ -11,7 +11,7 @@ use GDBM_File;
 use Getopt::Long;
 
 use Log::Dispatch;
-use Log::Dispatch::Screen;
+use Log::Dispatch::File;
 
 
 
@@ -35,6 +35,8 @@ $DEBUG=1 if ($DEBUGOPT);
 # run in background
 ## no critic
 
+
+
 open(STDIN,"</dev/null");
 open(STDOUT,">/dev/null");
 open(STDERR,">/dev/null");
@@ -57,6 +59,7 @@ sub addTS # add a timestamp to the log entry
 $LOG = Log::Dispatch->new;
 $LOG->add(Log::Dispatch::File->new(name => 'logfile',
 				   min_level => 'debug',
+				   filename => $LOGFILE,
 				   callbacks => \&addTS));
 
 
