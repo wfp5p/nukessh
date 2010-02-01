@@ -21,8 +21,8 @@ our %ipcount;
 
 my $DUMPTABLE = 0;
 my $READLOG='/var/log/secure'; # This may be /var/log/messages for some systems
-my $LOGFILE='/etc/uva/nukessh/nukessh.log';
-my $NUKEDBM='/etc/uva/nukessh/nukedbm';
+my $LOGFILE='/var/log/nukessh/nukessh.log';
+my $NUKEDBM='/var/cache/nukessh/nukedbm';
 my $EXPIRECYCLE = 3600;
 my $EXPIRE=43200; # how long a host stays blocked
 my $DECAY=10;
