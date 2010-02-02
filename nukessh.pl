@@ -11,6 +11,7 @@ use GDBM_File;
 
 use AppConfig;
 use Log::Log4perl qw(get_logger);
+use Log::Log4perl::Level;
 
 
 my $DUMPTABLE=0;
@@ -90,7 +91,7 @@ if ($config->configfile() ne "")
 
 ### configure log4perl
 
-startlogging($config->log4perl());
+startlogging($config->log4perl(), $config->debug());
 my $logger = get_logger();
 
 if ($logger->is_debug())
@@ -132,7 +133,7 @@ if ($config->daemon())
 
 sub startlogging
 {
-    my $filename = shift;
+    my ($filename, $debug) = @_;
 
     if ($filename ne "")
     {
@@ -142,7 +143,7 @@ sub startlogging
     else
     {
 	my $logconfig = "
-log4perl.rootLogger=DEBUG, LOGFILE
+log4perl.rootLogger=WARN, LOGFILE
 log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
 log4perl.appender.LOGFILE.filename=/var/log/nukessh/nukessh.log
 log4perl.appender.LOGFILE.mode=append
@@ -151,6 +152,12 @@ log4perl.appender.LOGFILE.layout=PatternLayout
 log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
 ";
 	Log::Log4perl->init(\$logconfig);
+    }
+
+    if ($debug)
+    {
+	my $logger = get_logger();
+	$logger->level($DEBUG);
     }
 }
 
