@@ -9,22 +9,27 @@ use File::Tail;
 use Socket;
 use GDBM_File;
 
-use Log::Dispatch;
-use Log::Dispatch::File;
-
 use AppConfig;
+use Log::Log4perl qw(get_logger);
 
 
-our ($LOG, $NOW);
+my $DUMPTABLE=0;
+
+our $NOW;
 our %DBM;
 our %ipcount;
 
-my $DUMPTABLE = 0; # flag is true if tables should be dumped to log
+
+### set/read configs
 
 my $config = AppConfig->new();
 
 $config->define('configfile', {ARGS => '=s',
 			       DEFAULT => '' });
+
+# log4perl config file
+$config->define('log4perl', {ARGS => '=s',
+			     DEFAULT => '' });
 
 $config->define('pidfile', {ARGS => '=s',
 			    DEFAULT => '' });
@@ -81,6 +86,24 @@ if ($config->configfile() ne "")
     }
 }
 
+### end of configure
+
+### configure log4perl
+
+startlogging($config->log4perl());
+my $logger = get_logger();
+
+if ($logger->is_debug())
+{
+    my %vars = $config->varlist(".*");
+
+    $logger->debug("Configuration options:");
+
+    while ( my ($var, $value) = each %vars)
+    {
+	$logger->debug("$var : $value");
+    }
+}
 
 if ($config->daemon())
 {
@@ -107,53 +130,47 @@ if ($config->daemon())
 
 # set up logging
 
-sub addTS # add a timestamp to the log entry
+sub startlogging
 {
-    my %p = @_;
+    my $filename = shift;
 
-    return strftime("%b %e %H:%M:%S %Y ",localtime) . $p{message} . "\n";
+    if ($filename ne "")
+    {
+	Log::Log4perl->init($filename);
+
+    }
+    else
+    {
+	my $logconfig = "
+log4perl.rootLogger=ERROR, LOGFILE
+log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
+log4perl.appender.LOGFILE.filename=/var/log/nukessh/nukessh.log
+log4perl.appender.LOGFILE.mode=append
+
+log4perl.appender.LOGFILE.layout=PatternLayout
+log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
+";
+	Log::Log4perl->init(\$logconfig);
+    }
 }
 
-
-$LOG = Log::Dispatch->new;
-$LOG->add(Log::Dispatch::File->new(name => 'logfile',
-				   min_level => 'debug',
-				   filename => $config->logfile(),
-				   callbacks => \&addTS));
 
 
 ## no critic
 
 tie %DBM, "GDBM_File", $config->dbmfile(),, O_RDWR|O_CREAT, 0640
-   or die "Unable to open DBM database";
+    or $logger->logdie("Unable to open DBM database");
 
 ## use critic
 
 
 my $nextExpireRun = time + $config->cycle();
 
-$SIG{USR1}=\&flip_debug;
 $SIG{USR2}=\&set_dump;
 
 sub set_dump
 {
-  $DUMPTABLE = 1;
-}
-
-sub flip_debug
-{
-    my $x = $config->get('debug');
-    $config->set('debug', (!$x));
-}
-
-sub logIt
-{
-  my ($message,$force) = @_;
-
-  return if ( (! $config->debug()) && ( ! $force) );
-
-  $LOG->log(level=>'debug', message => $message);
-
+    $DUMPTABLE = 1;
 }
 
 sub blockHost
@@ -166,8 +183,8 @@ sub blockHost
 
     delete $ipcount{$ip};
 
-    logIt("blocking $ip",1);
-
+    my $logger = get_logger();
+    $logger->warn("blocking $ip");
 }
 
 sub unblockHost
@@ -178,27 +195,27 @@ sub unblockHost
 
     delete $DBM{$ip};
 
-    logIt("unblocking $ip",1);
-
+    my $logger = get_logger();
+    $logger->warn("unblocking $ip");
 }
 
 sub dumpTable
 {
-
    my $entry;
+   my $logger = get_logger();
 
-   logIt ("Dumping ipcounts table:",1);
+   $logger->warn("Dumping ipcounts table:");
 
     while (my ($key,$val) = each %ipcount)
     {
-	logIt ("  $key $val",1);
+	$logger->warn("  $key $val");
     }
 
-   logIt ("Dumping DBM file:",1);
+   $logger->warn("Dumping DBM file:");
 
    while  ( my ($key,$val) = each %DBM)
    {
-      logIt ("  $key $val",1);
+       $logger->warn("  $key $val");
    }
 
    $DUMPTABLE = 0;
@@ -209,8 +226,9 @@ sub dumpTable
 sub expireHosts
 {
    my $entry;
+   my $logger = get_logger();
 
-   logIt("Doing expire.....");
+   $logger->debug("Doing expire.....");
 
    while  ( my ($key,$val) = each %ipcount)
    {
@@ -230,13 +248,13 @@ sub expireHosts
 
    $nextExpireRun = $NOW + $config->cycle();
 
-   logIt("Expire done, next expire at $nextExpireRun");
+   $logger->debug("Expire done, next expire at $nextExpireRun");
 
 }
 
 my $file = File::Tail->new(name=>$config->readlog(), maxinterval=>10);
 
-logIt ("nukessh started",1);
+$logger->warn("nukessh started");
 
 my $line;
 
@@ -260,8 +278,4 @@ while (defined ($line=$file->read))
    dumpTable if ($DUMPTABLE);
 
 }
-
-
-
-
 

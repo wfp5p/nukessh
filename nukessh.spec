@@ -1,6 +1,6 @@
 Summary: nuke ssh brute force attempts
 Name: nukessh
-Version: 0.2
+Version: 0.3
 Release: 1
 License: distributable
 Source0: nukessh-%{version}.tar.gz
@@ -10,9 +10,10 @@ Autoreqprov: false
 BuildArchitectures: noarch
 
 Requires: perl(File::Tail)
-Requires: perl(Log::Dispatch)
+Requires: perl(Log::Log4perl)
 Requires: perl(GDBM_File)
 Requires: perl(AppConfig)
+
 
 %description
 Daemon to detect and block ssh brute force attempts
