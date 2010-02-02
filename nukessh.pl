@@ -142,7 +142,7 @@ sub startlogging
     else
     {
 	my $logconfig = "
-log4perl.rootLogger=ERROR, LOGFILE
+log4perl.rootLogger=DEBUG, LOGFILE
 log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
 log4perl.appender.LOGFILE.filename=/var/log/nukessh/nukessh.log
 log4perl.appender.LOGFILE.mode=append
