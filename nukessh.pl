@@ -258,7 +258,7 @@ sub expireHosts
 
 }
 
-my $file = File::Tail->new(name=>$config->readlog(), maxinterval=>10);
+my $file = File::Tail->new(name=>$config->readlog());
 
 $logger->warn("nukessh started");
 
