@@ -6,7 +6,6 @@ use strict;
 use POSIX;
 
 use File::Tail;
-use Socket;
 use GDBM_File;
 
 use AppConfig;
