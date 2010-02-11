@@ -259,7 +259,7 @@ sub createChain
 
     if ($rv) {    # the chain is there so clear it
         $ipt->flush_chain('filter', $CHAIN);
-        $ipt->delete_chain('filter', $CHAIN);
+        $ipt->delete_chain('filter', 'INPUT', $CHAIN);
     }
 
     $ipt->create_chain('filter', $CHAIN);
