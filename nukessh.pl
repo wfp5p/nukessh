@@ -26,6 +26,13 @@ our %ipcount;
 my %ipt_opts = ('iptout' => '/dev/null',
                 'ipterr' => '/dev/null');
 
+sub validateNumber # only valid if number >0
+{
+    my ($varname, $value) = @_;
+
+    return ($value > 0);
+}
+
 sub doconfigure
 {
     $config->define('configfile',
@@ -47,7 +54,8 @@ sub doconfigure
     # were to put the jump rule
     $config->define('jumplocation',
                     {  ARGS    => '=i',
-                       DEFAULT => '4'
+                       DEFAULT => '4',
+		       VALIDATE => \&validateNumber
                     });
 
     # which log should we monitor
@@ -71,25 +79,29 @@ sub doconfigure
     # how often do we run the expire process
     $config->define('cycle',
                     {  ARGS    => '=i',
-                       DEFAULT => '3600'
+                       DEFAULT => '3600',
+		       VALIDATE => \&validateNumber
                     });
 
     # how many failures are removed for each host during the expire
     $config->define('decay',
                     {  ARGS    => '=i',
-                       DEFAULT => '10'
+                       DEFAULT => '10',
+		       VALIDATE => \&validateNumber
                     });
 
     # how long does a host stay blocked in seconds
     $config->define('blocktime',
                     {  ARGS    => '=i',
-                       DEFAULT => '43200'
+                       DEFAULT => '43200',
+		       VALIDATE => \&validateNumber
                     });
 
     # how many failures before a host is blocked
     $config->define('threshold',
                     {  ARGS    => '=i',
-                       DEFAULT => '100'
+                       DEFAULT => '100',
+		       VALIDATE => \&validateNumber
                     });
 
     # fork in background
@@ -212,6 +224,7 @@ sub dumpConfig
 sub startlogging
 {
     my ($filename, $debug) = @_;
+    my $logfile = $config->logfile();
 
     if ($filename ne "") {
         Log::Log4perl->init($filename);
@@ -221,11 +234,11 @@ sub startlogging
         my $logconfig = "
 log4perl.rootLogger=WARN, LOGFILE
 log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
-log4perl.appender.LOGFILE.filename=/var/log/nukessh/nukessh.log
+log4perl.appender.LOGFILE.filename=$logfile
 log4perl.appender.LOGFILE.mode=append
 
 log4perl.appender.LOGFILE.layout=PatternLayout
-log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
+log4perl.appender.LOGFILE.layout.ConversionPattern=\%d \%F - \%m\%n
 ";
         Log::Log4perl->init(\$logconfig);
     }
@@ -236,7 +249,7 @@ log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
     }
 }
 
-sub createChain()
+sub createChain
 {
     my $logger = get_logger();
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
