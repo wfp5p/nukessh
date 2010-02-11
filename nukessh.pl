@@ -159,17 +159,17 @@ sub expireHosts
 
    $logger->debug("Doing expire.....");
 
-   while  ( my ($key,$val) = each %ipcount)
+   while  ( my ($ip,$count) = each %ipcount)
    {
-       if ($val <= $config->decay()) { delete $ipcount{$key}; }
-       else { $ipcount{$key} -= $config->decay(); }
+       if ($count <= $config->decay()) { delete $ipcount{$ip}; }
+       else { $ipcount{$ip} -= $config->decay(); }
    }
 
-   while  ( my ($key,$val) = each %DBM)
+   while  ( my ($ip,$expire) = each %DBM)
    {
-       if ($DBM{$key} < $NOW)
+       if ($expire < $NOW)
        {
-           unblockHost($key);
+           unblockHost($ip);
 
        }
 
