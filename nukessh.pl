@@ -22,8 +22,6 @@ our $NOW;
 our %DBM;
 our %ipcount;
 
-
-
 sub doconfigure
 {
     $config->define('configfile', {ARGS => '=s',
@@ -173,51 +171,23 @@ sub expireHosts
 
 }
 
-### begins main body
-doconfigure();
-
-
-### configure log4perl
-
-startlogging($config->log4perl(), $config->debug());
-my $logger = get_logger();
-
-if ($logger->is_debug())
-{
-    my %vars = $config->varlist(".*");
-
-    $logger->debug("Configuration options:");
-
-    while ( my ($var, $value) = each %vars)
-    {
-	$logger->debug("$var : $value");
-    }
-}
-
-if ($config->daemon())
+sub dumpConfig
 {
 
-    ## no critic
-    open(STDIN,"</dev/null");
-    open(STDOUT,">/dev/null");
-    open(STDERR,">/dev/null");
-    ## use critic
+    my $logger = get_logger();
 
-    if (my $pid = fork())
+    if ($logger->is_debug())
     {
-	if ($config->get('pidfile') ne "")
+	my %vars = $config->varlist(".*");
+
+	$logger->debug("Configuration options:");
+
+	while ( my ($var, $value) = each %vars)
 	{
-	    open my $outfile, '>', $config->get('pidfile');
-	    print $outfile "$pid\n";
-	    close $outfile;
+	    $logger->debug("$var : $value");
 	}
-	exit 0;
     }
-
-    setsid;
 }
-
-# set up logging
 
 sub startlogging
 {
@@ -250,6 +220,39 @@ log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
 }
 
 
+
+
+### begins main body
+
+doconfigure();
+startlogging($config->log4perl(), $config->debug());
+dumpConfig();
+
+if ($config->daemon())
+{
+
+    ## no critic
+    open(STDIN,"</dev/null");
+    open(STDOUT,">/dev/null");
+    open(STDERR,">/dev/null");
+    ## use critic
+
+    if (my $pid = fork())
+    {
+	if ($config->get('pidfile') ne "")
+	{
+	    open my $outfile, '>', $config->get('pidfile');
+	    print $outfile "$pid\n";
+	    close $outfile;
+	}
+	exit 0;
+    }
+
+    setsid;
+}
+
+
+my $logger = get_logger();
 
 ## no critic
 
