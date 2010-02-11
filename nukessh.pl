@@ -43,7 +43,7 @@ sub doconfigure
 
     # were to put the jump rule
     $config->define('jumplocation', {ARGS => '=i',
-				DEFAULT => 4 });
+				DEFAULT => '4' });
 
     # which log should we monitor
     $config->define('readlog', {ARGS => '=s',
@@ -96,7 +96,6 @@ sub doconfigure
     ### end of configure
 }
 
-
 sub set_dump
 {
     $DUMPTABLE = 1;
@@ -105,26 +104,30 @@ sub set_dump
 sub blockHost
 {
     my $ip = shift;
+    my $logger = get_logger();
+    my $ipt = new IPTables::ChainMgr(%ipt_opts)
+	or $logger->logdie("ChainMgr failed");
 
-    system "/sbin/iptables -A nukessh -s $ip -j DROP";
+    $ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
+    # add to DBM, remove from ipcount
     $DBM{$ip} = $NOW + $config->blocktime();
-
     delete $ipcount{$ip};
 
-    my $logger = get_logger();
     $logger->warn("blocking $ip");
 }
 
 sub unblockHost
 {
     my $ip = shift;
+    my $logger = get_logger();
+    my $ipt = new IPTables::ChainMgr(%ipt_opts)
+	or $logger->logdie("ChainMgr failed");
 
-    system "/sbin/iptables -D nukessh -s $ip -j DROP";
+    $ipt->delete_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
     delete $DBM{$ip};
 
-    my $logger = get_logger();
     $logger->warn("unblocking $ip");
 }
 
