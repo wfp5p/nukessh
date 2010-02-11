@@ -11,168 +11,83 @@ use GDBM_File;
 use AppConfig;
 use Log::Log4perl qw(get_logger);
 use Log::Log4perl::Level;
+use IPTables::ChainMgr;
 
 
 my $DUMPTABLE=0;
+my $config = AppConfig->new();
 
+our $nextExpireRun;
 our $NOW;
 our %DBM;
 our %ipcount;
 
 
-### set/read configs
 
-my $config = AppConfig->new();
-
-$config->define('configfile', {ARGS => '=s',
-			       DEFAULT => '' });
-
-# log4perl config file
-$config->define('log4perl', {ARGS => '=s',
-			     DEFAULT => '' });
-
-$config->define('pidfile', {ARGS => '=s',
-			    DEFAULT => '' });
-
-# which log should we monitor
-$config->define('readlog', {ARGS => '=s',
-			    DEFAULT => '/var/log/secure' });
-
-# name of our logfile
-$config->define('logfile', {ARGS => '=s',
-			    DEFAULT => '/var/log/nukessh/nukessh.log' });
-
-# name of dbm file
-$config->define('dbmfile', {ARGS => '=s',
-			    DEFAULT => '/var/cache/nukessh/nukedbm' });
-
-# how often do we run the expire process
-$config->define('cycle', {ARGS => '=i',
-			    DEFAULT => '3600' });
-
-# how many failures are removed for each host during the expire
-$config->define('decay', {ARGS => '=i',
-			    DEFAULT => '10' });
-
-
-# how long does a host stay blocked in seconds
-$config->define('blocktime', {ARGS => '=i',
-			    DEFAULT => '43200' });
-
-# how many failures before a host is blocked
-$config->define('threshold', {ARGS => '=i',
-			    DEFAULT => '100' });
-
-# fork in background
-$config->define('daemon', {ARGS => '!',
-			    DEFAULT => '1' });
-
-$config->define('debug', {ARGS => '!'});
-
-$config->getopt();
-
-if ($config->configfile() ne "")
+sub doconfigure
 {
-    if (-r $config->configfile())
-    {
-	$config->file($config->configfile());
-	# read options again so that command line overrides
-	$config->getopt();
-    }
-    else
-    {
-	my $cf = $config->configfile();
-	die "can not read configfile $cf";
-    }
-}
+    $config->define('configfile', {ARGS => '=s',
+				   DEFAULT => '' });
 
-### end of configure
+    # log4perl config file
 
-### configure log4perl
+   $config->define('log4perl', {ARGS => '=s',
+				 DEFAULT => '' });
 
-startlogging($config->log4perl(), $config->debug());
-my $logger = get_logger();
+    $config->define('pidfile', {ARGS => '=s',
+				DEFAULT => '' });
 
-if ($logger->is_debug())
-{
-    my %vars = $config->varlist(".*");
+    # which log should we monitor
+    $config->define('readlog', {ARGS => '=s',
+				DEFAULT => '/var/log/secure' });
 
-    $logger->debug("Configuration options:");
+    # name of our logfile
+    $config->define('logfile', {ARGS => '=s',
+				DEFAULT => '/var/log/nukessh/nukessh.log' });
 
-    while ( my ($var, $value) = each %vars)
-    {
-	$logger->debug("$var : $value");
-    }
-}
+    # name of dbm file
+    $config->define('dbmfile', {ARGS => '=s',
+				DEFAULT => '/var/cache/nukessh/nukedbm' });
 
-if ($config->daemon())
-{
+    # how often do we run the expire process
+    $config->define('cycle', {ARGS => '=i',
+			      DEFAULT => '3600' });
 
-    ## no critic
-    open(STDIN,"</dev/null");
-    open(STDOUT,">/dev/null");
-    open(STDERR,">/dev/null");
-    ## use critic
+    # how many failures are removed for each host during the expire
+    $config->define('decay', {ARGS => '=i',
+			      DEFAULT => '10' });
 
-    if (my $pid = fork())
-    {
-	if ($config->get('pidfile') ne "")
-	{
-	    open my $outfile, '>', $config->get('pidfile');
-	    print $outfile "$pid\n";
-	    close $outfile;
+
+    # how long does a host stay blocked in seconds
+    $config->define('blocktime', {ARGS => '=i',
+				  DEFAULT => '43200' });
+
+    # how many failures before a host is blocked
+    $config->define('threshold', {ARGS => '=i',
+				  DEFAULT => '100' });
+
+    # fork in background
+    $config->define('daemon', {ARGS => '!',
+			       DEFAULT => '1' });
+
+    $config->define('debug', {ARGS => '!'});
+
+    $config->getopt();
+
+    if ($config->configfile() ne "") {
+	if (-r $config->configfile()) {
+	    $config->file($config->configfile());
+	    # read options again so that command line overrides
+	    $config->getopt();
+	} else {
+	    my $cf = $config->configfile();
+	    die "can not read configfile $cf";
 	}
-	exit 0;
     }
 
-    setsid;
+    ### end of configure
 }
 
-# set up logging
-
-sub startlogging
-{
-    my ($filename, $debug) = @_;
-
-    if ($filename ne "")
-    {
-	Log::Log4perl->init($filename);
-
-    }
-    else
-    {
-	my $logconfig = "
-log4perl.rootLogger=WARN, LOGFILE
-log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
-log4perl.appender.LOGFILE.filename=/var/log/nukessh/nukessh.log
-log4perl.appender.LOGFILE.mode=append
-
-log4perl.appender.LOGFILE.layout=PatternLayout
-log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
-";
-	Log::Log4perl->init(\$logconfig);
-    }
-
-    if ($debug)
-    {
-	my $logger = get_logger();
-	$logger->level($DEBUG);
-    }
-}
-
-
-
-## no critic
-
-tie %DBM, "GDBM_File", $config->dbmfile(),, O_RDWR|O_CREAT, 0640
-    or $logger->logdie("Unable to open DBM database");
-
-## use critic
-
-
-my $nextExpireRun = time + $config->cycle();
-
-$SIG{USR2}=\&set_dump;
 
 sub set_dump
 {
@@ -257,6 +172,95 @@ sub expireHosts
    $logger->debug("Expire done, next expire at $nextExpireRun");
 
 }
+
+### begins main body
+doconfigure();
+
+
+### configure log4perl
+
+startlogging($config->log4perl(), $config->debug());
+my $logger = get_logger();
+
+if ($logger->is_debug())
+{
+    my %vars = $config->varlist(".*");
+
+    $logger->debug("Configuration options:");
+
+    while ( my ($var, $value) = each %vars)
+    {
+	$logger->debug("$var : $value");
+    }
+}
+
+if ($config->daemon())
+{
+
+    ## no critic
+    open(STDIN,"</dev/null");
+    open(STDOUT,">/dev/null");
+    open(STDERR,">/dev/null");
+    ## use critic
+
+    if (my $pid = fork())
+    {
+	if ($config->get('pidfile') ne "")
+	{
+	    open my $outfile, '>', $config->get('pidfile');
+	    print $outfile "$pid\n";
+	    close $outfile;
+	}
+	exit 0;
+    }
+
+    setsid;
+}
+
+# set up logging
+
+sub startlogging
+{
+    my ($filename, $debug) = @_;
+
+    if ($filename ne "")
+    {
+	Log::Log4perl->init($filename);
+
+    }
+    else
+    {
+	my $logconfig = "
+log4perl.rootLogger=WARN, LOGFILE
+log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
+log4perl.appender.LOGFILE.filename=/var/log/nukessh/nukessh.log
+log4perl.appender.LOGFILE.mode=append
+
+log4perl.appender.LOGFILE.layout=PatternLayout
+log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
+";
+	Log::Log4perl->init(\$logconfig);
+    }
+
+    if ($debug)
+    {
+	my $logger = get_logger();
+	$logger->level($DEBUG);
+    }
+}
+
+
+
+## no critic
+
+tie %DBM, "GDBM_File", $config->dbmfile(),, O_RDWR|O_CREAT, 0640
+    or $logger->logdie("Unable to open DBM database");
+
+## use critic
+
+$nextExpireRun = time + $config->cycle();
+
+$SIG{USR2}=\&set_dump;
 
 my $file = File::Tail->new(name=>$config->readlog());
 
