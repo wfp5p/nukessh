@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 #
 # chkconfig: 345 57 03
 # description: start nukessh
@@ -6,54 +6,75 @@
 #               nukessh
 #
 
-[ -f /usr/sbin/nukessh ] || exit 0
+# Source function library.
+. /etc/rc.d/init.d/functions
 
-# Get pid file & pid
+RETVAL=0
+prog="nukessh"
+pidfile="/var/run/nukessh.pid"
+lockfile=/var/lock/subsys/$prog
 
-PIDFILE=/var/run/nukessh.pid
+OPTIONS="-pidfile=$pidfile"
 
-if test -f "$PIDFILE"
-then
-  DAEMON_PID=`cat $PIDFILE`
-fi
+[ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
 
-# See how we were called.
+
+start() {
+     [ "$EUID" != "0" ] && exit 4
+     [ -x $binary ] || exit 5
+     echo -n $"Starting $prog: "
+     daemon $prog $OPTIONS
+     RETVAL=$?
+     echo
+     [ $RETVAL -eq 0 ] && touch $lockfile
+     return $RETVAL
+}
+
+stop() {
+     [ "$EUID" != "0" ] && exit 4
+     echo -n $"Stopping $prog: "
+     killproc -p $pidfile $binary
+     RETVAL=$?
+     [ $RETVAL -eq 0 ] && rm -f $lockfile
+     echo
+     return $RETVAL
+}
+
+restart(){
+	stop
+	start
+}
 
 case "$1" in
   start)
-	# Start daemons.
-	echo "Starting nukessh"
-	/usr/sbin/nukessh -p $PIDFILE
-        RETVAL=$?
-        echo
-        [ $RETVAL -eq 0 ] && touch /var/lock/subsys/nukessh
+	start
+	RETVAL=$?
 	;;
   stop)
-	# Stop daemons.
-        if test -n "$DAEMON_PID"
-        then
-          echo "Shutting down nukessh"
-	  kill $DAEMON_PID
-	  RETVAL=$?
-          echo
-          [ $RETVAL -eq 0 ] && rm -f /var/lock/subsys/nukessh
-        else
-          RETVAL=1
-          echo
-        fi
-
-        if test -f "$PIDFILE"
-        then
-          rm -f $PIDFILE
-        fi
+	stop
+	RETVAL=$?
 	;;
   restart)
-	$0 stop
-	$0 start
+	restart
+	RETVAL=$?
+        ;;
+  reload|force-reload)
+	exit 3
+        ;;
+  condrestart|try-restart)
+	if status $prog > /dev/null; then
+	    stop
+	    start
+	fi
 	;;
+  status)
+        status $prog
+	RETVAL=$?
+        ;;
   *)
-	echo "Usage: nukessh {start|stop|restart}"
-	exit 1
+	echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+	RETVAL=2
 esac
 
 exit $RETVAL
+
