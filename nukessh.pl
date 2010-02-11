@@ -257,10 +257,7 @@ sub createChain
 
     my ($rv, $out_aref, $err_aref) = $ipt->chain_exists('filter', $CHAIN);
 
-    if ($rv) {    # the chain is there so clear it
-        $ipt->flush_chain('filter', $CHAIN);
-        $ipt->delete_chain('filter', 'INPUT', $CHAIN);
-    }
+    $ipt->delete_chain('filter', 'INPUT', $CHAIN) if ($rv);
 
     $ipt->create_chain('filter', $CHAIN);
     $ipt->add_jump_rule('filter', 'INPUT', $config->jumplocation(), $CHAIN);
