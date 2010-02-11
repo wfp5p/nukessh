@@ -271,11 +271,10 @@ my $line;
 while (defined ($line=$file->read))
 {
    $NOW = time();
-   $_ = $line;
 
    $logger->trace("examining line: $line");
 
-   if (/sshd\[\d+\]: Failed password for .* from (\d+\.\d+\.\d+\.\d+) port/)
+   if ($line =~ /sshd\[\d+\]: Failed password for .* from (\d+\.\d+\.\d+\.\d+) port/)
    {
        my $ip = $1;
 
