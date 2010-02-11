@@ -15,12 +15,18 @@ use IPTables::ChainMgr;
 
 
 my $DUMPTABLE=0;
+my $CHAIN = 'nukessh'; # name of chain in iptables
 my $config = AppConfig->new();
 
 our $nextExpireRun;
 our $NOW;
 our %DBM;
 our %ipcount;
+
+# options for IPTables::ChainMgr
+my %ipt_opts = ( 'iptout' => '/dev/null',
+		 'ipterr' => '/dev/null');
+
 
 sub doconfigure
 {
@@ -34,6 +40,10 @@ sub doconfigure
 
     $config->define('pidfile', {ARGS => '=s',
 				DEFAULT => '' });
+
+    # were to put the jump rule
+    $config->define('jumplocation', {ARGS => '=i',
+				DEFAULT => 4 });
 
     # which log should we monitor
     $config->define('readlog', {ARGS => '=s',
@@ -219,13 +229,36 @@ log4perl.appender.LOGFILE.layout.ConversionPattern=%d %F - %m%n
     }
 }
 
+sub createChain()
+{
+    my $logger = get_logger();
+    my $ipt = new IPTables::ChainMgr(%ipt_opts)
+	or $logger->logdie("ChainMgr failed");
 
+    my ($rv,  $out_aref, $err_aref) = $ipt->chain_exists('filter', $CHAIN);
+
+    if ($rv) # the chain is there so clear it
+    {
+	$ipt->flush_chain('filter', $CHAIN);
+	$ipt->delete_chain('filter', $CHAIN);
+    }
+
+    $ipt->create_chain('filter', $CHAIN);
+    $ipt->add_jump_rule('filter', 'INPUT', $config->jumplocation(), $CHAIN);
+
+# add blocked hosts back
+   while  ( my ($ip,$expire) = each %DBM)
+   {
+       if ($expire > $NOW) {blockHost($ip);}
+   }
+}
 
 
 ### begins main body
 
 doconfigure();
 startlogging($config->log4perl(), $config->debug());
+my $logger = get_logger();
 dumpConfig();
 
 if ($config->daemon())
@@ -251,15 +284,14 @@ if ($config->daemon())
     setsid;
 }
 
-
-my $logger = get_logger();
-
 ## no critic
 
 tie %DBM, "GDBM_File", $config->dbmfile(),, O_RDWR|O_CREAT, 0640
     or $logger->logdie("Unable to open DBM database");
 
 ## use critic
+
+createChain();
 
 $nextExpireRun = time + $config->cycle();
 
@@ -292,4 +324,3 @@ while (defined ($line=$file->read))
    dumpTable if ($DUMPTABLE);
 
 }
-
