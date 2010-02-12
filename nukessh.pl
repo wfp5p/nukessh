@@ -140,13 +140,19 @@ sub blockHost
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
       or $logger->logdie("ChainMgr failed");
 
-    $ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
+    # try not to add a host to the tables twice
+    if (! defined $DBM{$ip}) {
+	$ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
-    # add to DBM, remove from ipcount
-    $DBM{$ip} = $NOW + $config->blocktime();
-    delete $ipcount{$ip};
+	# add to DBM, remove from ipcount
+	$DBM{$ip} = $NOW + $config->blocktime();
+	delete $ipcount{$ip};
+	$logger->warn("blocking $ip");
+    }
+    else {
+	$logger->warn("possible attempt to block $ip twice");
+    }
 
-    $logger->warn("blocking $ip");
 }
 
 sub unblockHost
