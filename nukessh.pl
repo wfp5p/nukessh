@@ -146,17 +146,20 @@ sub blockHost
       or $logger->logdie("ChainMgr failed");
 
     # try not to add a host to the tables twice
-    if ( ($force) || (! defined $DBM{$ip}) ) {
-	$ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
+    if ( (!$force) && (defined $DBM{$ip}) && ($DBM{$ip} > $NOW) ) {
+	$logger->trace("possible attempt to block $ip twice");
+	return;
+    }
 
-	# add to DBM, remove from ipcount
+    $logger->warn("blocking $ip");
+    $ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
+
+    # add to DBM, remove from ipcount
+    if ( (!defined $DBM{$ip}) || ($DBM{$ip} < $NOW) )  {
 	$DBM{$ip} = $NOW + $config->blocktime();
-	delete $ipcount{$ip};
-	$logger->warn("blocking $ip");
     }
-    else {
-	$logger->warn("possible attempt to block $ip twice");
-    }
+
+    delete $ipcount{$ip};
 
 }
 
@@ -309,6 +312,8 @@ if ($config->daemon()) {
 
 tie %DBM, "GDBM_File", $config->dbmfile(),, O_RDWR | O_CREAT, 0640
   or $logger->logdie("Unable to open DBM database");
+
+$NOW = time();
 
 ## use critic
 
