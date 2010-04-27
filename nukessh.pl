@@ -30,6 +30,18 @@ my %ipt_opts = (
              'debug'    => 0,
 	    'verbose'  => 1);
 
+# for hardcore mode, any attempt to log into these gets and immediate nuke
+my %badusers = ( 'nobody' => 1,
+		 'squid' => 1,
+		 'postfix' => 1,
+		 'munin' => 1,
+		 'mysql' => 1,
+		 'news' => 1,
+		 'gopher' => 1,
+		 'mail' => 1,);
+
+
+
 sub validateNumber # only valid if number >0
 {
     my ($varname, $value) = @_;
@@ -115,6 +127,7 @@ sub doconfigure
                     });
 
     $config->define('debug', { ARGS => '!' });
+    $config->define('hardcore', { ARGS => '!' });
 
     $config->getopt();
 
@@ -325,7 +338,13 @@ $SIG{USR2} = \&set_dump;
 
 my $file = File::Tail->new(name => $config->readlog());
 
-$logger->warn("nukessh started");
+if ($config->hardcore) {
+    $logger->warn("nukessh started in hardcore mode");
+}
+else
+{
+   $logger->warn("nukessh started");
+}
 
 my $line;
 
@@ -335,11 +354,16 @@ while (defined($line = $file->read)) {
     $logger->trace("examining line: $line");
 
     if ($line =~
-        /sshd\[\d+\]: Failed password for .* from (\d+\.\d+\.\d+\.\d+) port/)
+        /sshd\[\d+\]: Failed password for (.*) from (\d+\.\d+\.\d+\.\d+) port/)
     {
-        my $ip = $1;
+        my ($user,$ip) = ($1,$2);
 
         $ipcount{$ip}++;
+
+	if ( ($config->hardcore()) && ($badusers{$user}) ) {
+	    $logger->warn("$ip wins the bonus round with $user!");
+	    $ipcount{$ip} += $config->threshold() + 1;
+	}
 
         blockHost($ip) if ($ipcount{$ip} > $config->threshold());
 
