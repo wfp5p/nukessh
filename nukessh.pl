@@ -23,8 +23,12 @@ our %DBM;
 our %ipcount;
 
 # options for IPTables::ChainMgr
-my %ipt_opts = ('iptout' => '/dev/null',
-                'ipterr' => '/dev/null');
+my %ipt_opts = (
+             'iptables' => '/sbin/iptables',
+             'iptout'   => '/tmp/iptables.out',
+             'ipterr'   => '/tmp/iptables.err',
+             'debug'    => 0,
+	    'verbose'  => 1);
 
 sub validateNumber # only valid if number >0
 {
@@ -136,12 +140,13 @@ sub set_dump
 sub blockHost
 {
     my $ip     = shift;
+    my $force  = shift;
     my $logger = get_logger();
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
       or $logger->logdie("ChainMgr failed");
 
     # try not to add a host to the tables twice
-    if (! defined $DBM{$ip}) {
+    if ( ($force) || (! defined $DBM{$ip}) ) {
 	$ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
 	# add to DBM, remove from ipcount
@@ -270,7 +275,7 @@ sub createChain
 
     # add blocked hosts back
     while (my ($ip, $expire) = each %DBM) {
-        if ($expire > $NOW) { blockHost($ip); }
+        if ($expire > $NOW) { blockHost($ip,1); }
     }
 }
 
