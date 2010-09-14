@@ -12,6 +12,7 @@ use AppConfig;
 use Log::Log4perl qw(get_logger);
 use Log::Log4perl::Level;
 use IPTables::ChainMgr;
+use File::Temp qw(mktemp);
 
 my $DUMPTABLE = 0;
 my $CHAIN     = 'nukessh';          # name of chain in iptables
@@ -25,10 +26,10 @@ our %ipcount;
 # options for IPTables::ChainMgr
 my %ipt_opts = (
              'iptables' => '/sbin/iptables',
-             'iptout'   => '/tmp/iptables.out',
-             'ipterr'   => '/tmp/iptables.err',
+	     'iptout'   => mktemp('/tmp/nukessh.XXXXXX'),
+             'ipterr'   => mktemp('/tmp/nukessh.XXXXXX'),
              'debug'    => 0,
-	    'verbose'  => 1);
+	     'verbose'  => 1);
 
 # for hardcore mode, any attempt to log into these gets and immediate nuke
 my %badusers = ( 'nobody' => 1,
