@@ -355,7 +355,7 @@ while (defined($line = $file->read)) {
     $logger->trace("examining line: $line");
 
     if ($line =~
-        /sshd\[\d+\]: Failed password for (.*) from (\d+\.\d+\.\d+\.\d+) port/)
+        /sshd\[\d+\]: Failed password for (?:invalid user )?(.*) from (\d+\.\d+\.\d+\.\d+) port/)
     {
         my ($user,$ip) = ($1,$2);
 
