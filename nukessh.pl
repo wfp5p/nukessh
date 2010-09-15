@@ -5,21 +5,19 @@
 use strict;
 use POSIX;
 
-use File::Tail;
+use POE qw(Wheel::FollowTail);
 use GDBM_File;
-
 use AppConfig;
 use Log::Log4perl qw(get_logger);
 use Log::Log4perl::Level;
 use IPTables::ChainMgr;
 use File::Temp qw(mktemp);
+use List::Util qw(first);
+use App::Daemon qw(detach);
 
-my $DUMPTABLE = 0;
 my $CHAIN     = 'nukessh';          # name of chain in iptables
 my $config    = AppConfig->new();
 
-our $nextExpireRun;
-our $NOW;
 our %DBM;
 our %ipcount;
 
@@ -32,16 +30,8 @@ my %ipt_opts = (
 	     'verbose'  => 1);
 
 # for hardcore mode, any attempt to log into these gets and immediate nuke
-my %badusers = ( 'nobody' => 1,
-		 'squid' => 1,
-		 'postfix' => 1,
-		 'munin' => 1,
-		 'mysql' => 1,
-		 'news' => 1,
-		 'gopher' => 1,
-		 'mail' => 1,);
-
-
+my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
+		  munin mysql news gopher mail);
 
 sub validateNumber # only valid if number >0
 {
@@ -148,7 +138,11 @@ sub doconfigure
 
 sub set_dump
 {
-    $DUMPTABLE = 1;
+    my $logger = get_logger();
+    $logger->debug("set_dump");
+
+    $poe_kernel->post( "expirer", "sig_usr2", 0);
+    $poe_kernel->sig_handled();
 }
 
 sub blockHost
@@ -156,6 +150,7 @@ sub blockHost
     my $ip     = shift;
     my $force  = shift;
     my $logger = get_logger();
+    my $NOW = time();
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
       or $logger->logdie("ChainMgr failed");
 
@@ -208,12 +203,12 @@ sub dumpTable
         $logger->warn("  $key $val");
     }
 
-    $DUMPTABLE = 0;
 }
 
 sub expireHosts
 {
     my $entry;
+    my $NOW = time();
     my $logger = get_logger();
 
     $logger->debug("Doing expire.....");
@@ -226,11 +221,6 @@ sub expireHosts
     while (my ($ip, $expire) = each %DBM) {
         if ($expire < $NOW) { unblockHost($ip); }
     }
-
-    $nextExpireRun = $NOW + $config->cycle();
-
-    $logger->debug("Expire done, next expire at $nextExpireRun");
-
 }
 
 sub dumpConfig
@@ -267,6 +257,8 @@ log4perl.appender.LOGFILE.mode=append
 
 log4perl.appender.LOGFILE.layout=PatternLayout
 log4perl.appender.LOGFILE.layout.ConversionPattern=\%d \%F - \%m\%n
+log4perl.appender.LOGFILE.recreate = 1
+log4perl.appender.LOGFILE.recreate_check_signal = HUP
 ";
         Log::Log4perl->init(\$logconfig);
     }
@@ -280,6 +272,7 @@ log4perl.appender.LOGFILE.layout.ConversionPattern=\%d \%F - \%m\%n
 sub createChain
 {
     my $logger = get_logger();
+    my $NOW = time();
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
       or $logger->logdie("ChainMgr failed");
 
@@ -299,45 +292,30 @@ sub createChain
 ### begins main body
 
 doconfigure();
-startlogging($config->log4perl(), $config->debug());
-my $logger = get_logger();
-dumpConfig();
 
 if ($config->daemon()) {
 
-    ## no critic
-    open(STDIN,  "</dev/null");
-    open(STDOUT, ">/dev/null");
-    open(STDERR, ">/dev/null");
-    ## use critic
-
-    if (my $pid = fork()) {
-        if ($config->get('pidfile') ne "") {
-            open my $outfile, '>', $config->get('pidfile');
-            print $outfile "$pid\n";
-            close $outfile;
-        }
-        exit 0;
+    if ($config->get('pidfile') ne "") {
+	$App::Daemon::pidfile = $config->get('pidfile');
     }
-    setsid;
+    else {
+	$App::Daemon::pidfile = "/tmp/nukessh.pid";
+    }
+    detach();
 }
+
+startlogging($config->log4perl(), $config->debug());
+my $logger = get_logger();
+dumpConfig();
 
 ## no critic
 
 tie %DBM, "GDBM_File", $config->dbmfile(),, O_RDWR | O_CREAT, 0640
   or $logger->logdie("Unable to open DBM database");
 
-$NOW = time();
-
 ## use critic
 
 createChain();
-
-$nextExpireRun = time + $config->cycle();
-
-$SIG{USR2} = \&set_dump;
-
-my $file = File::Tail->new(name => $config->readlog());
 
 if ($config->hardcore) {
     $logger->warn("nukessh started in hardcore mode");
@@ -347,10 +325,34 @@ else
    $logger->warn("nukessh started");
 }
 
-my $line;
+POE::Session->create(
+   inline_states => {
+       _start => sub {
+	   $_[KERNEL]->alias_set("expirer");
+	   $_[KERNEL]->delay(expire => $config->cycle);
+	   },
+       sig_usr2 => \&dumpTable,
+       expire => sub {
+	   expireHosts();
+	   $_[KERNEL]->delay(expire => $config->cycle);
+       }});
 
-while (defined($line = $file->read)) {
-    $NOW = time();
+POE::Session->create(
+   inline_states => {
+       _start => sub {
+	   $_[HEAP]{fn} = POE::Wheel::FollowTail->new(
+               Filename =>  $config->readlog(),
+  	       InputEvent => "log_line");
+       },
+       log_line => \&process_line,
+		    });
+
+$SIG{USR2} = \&set_dump;
+POE::Kernel->run();
+
+sub process_line
+{
+    my $line = $_[ARG0];
 
     $logger->trace("examining line: $line");
 
@@ -361,15 +363,11 @@ while (defined($line = $file->read)) {
 
         $ipcount{$ip}++;
 
-	if ( ($config->hardcore()) && ($badusers{$user}) ) {
+	if ( ($config->hardcore()) && (first {$user eq $_} @badusers) ) {
 	    $logger->warn("$ip wins the bonus round with $user!");
 	    $ipcount{$ip} += $config->threshold() + 1;
 	}
 
         blockHost($ip) if ($ipcount{$ip} > $config->threshold());
-
     }
-
-    expireHosts() if ($NOW > $nextExpireRun);
-    dumpTable if ($DUMPTABLE);
 }
