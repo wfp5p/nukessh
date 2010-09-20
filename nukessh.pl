@@ -27,7 +27,7 @@ my %ipt_opts = (
 	     'iptout'   => mktemp('/tmp/nukessh.XXXXXX'),
              'ipterr'   => mktemp('/tmp/nukessh.XXXXXX'),
              'debug'    => 0,
-	     'verbose'  => 1);
+	     'verbose'  => 0);
 
 # for hardcore mode, any attempt to log into these gets and immediate nuke
 my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
