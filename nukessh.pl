@@ -348,7 +348,15 @@ POE::Session->create(
 		    });
 
 $SIG{USR2} = \&set_dump;
+$SIG{TERM} = \&cleanup;
 POE::Kernel->run();
+
+sub cleanup
+{
+    $poe_kernel->stop();
+    unlink $ipt_opts{iptout};
+    unlink $ipt_opts{ipterr};
+}
 
 sub process_line
 {
