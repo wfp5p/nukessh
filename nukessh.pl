@@ -6,9 +6,6 @@ use strict;
 use POSIX;
 
 use POE qw(Wheel::FollowTail);
-use Storable;
-use GDBM_File;
-use MLDBM qw(GDBM_File Storable);
 use AppConfig;
 use Log::Log4perl qw(get_logger);
 use Log::Log4perl::Level;
@@ -16,11 +13,12 @@ use IPTables::ChainMgr;
 use File::Temp qw(mktemp);
 use List::Util qw(first);
 use App::Daemon qw(detach);
+use NukeDB;
 
 my $CHAIN     = 'nukessh';          # name of chain in iptables
 my $config    = AppConfig->new();
 
-our %DBM;
+our $nukedb;
 our %ipcount;
 
 # options for IPTables::ChainMgr
@@ -82,7 +80,7 @@ sub doconfigure
     # name of dbm file
     $config->define('dbmfile',
                     {  ARGS    => '=s',
-                       DEFAULT => '/var/cache/nukessh/nukedbm2'
+                       DEFAULT => '/var/cache/nukessh/nukedb'
                     });
 
     # how often do we run the expire process
@@ -156,25 +154,20 @@ sub blockHost
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
       or $logger->logdie("ChainMgr failed");
 
-    # try not to add a host to the tables twice
-    if ( (!$force) && (defined $DBM{$ip}) && ($DBM{$ip}->{expire} > $NOW) ) {
-	$logger->trace("possible attempt to block $ip twice");
-	return;
-    }
+    # try not to add a host to the tables twice 7!
+    # if ( (!$force) && (defined $DBM{$ip}) && ($DBM{$ip}->{expire} > $NOW) ) {
+    # 	$logger->trace("possible attempt to block $ip twice");
+    # 	return;
+    # }
 
     $logger->warn("blocking $ip");
     $ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
-    # add to DBM, remove from ipcount
-    if ( (!defined $DBM{$ip}) || ($DBM{$ip}->{expire} < $NOW) )  {
-	my $x = $DBM{$ip};
-	$x->{expire} = $NOW + $config->blocktime();
-	$x->{blocks}++;
-	$DBM{$ip} = $x;
-    }
+    # add to DB, remove from ipcount
+    $nukedb->insertexpire($ip, $NOW + $config->blocktime()) if (!$force);
 
     delete $ipcount{$ip};
-
+    return;
 }
 
 sub unblockHost
@@ -186,9 +179,7 @@ sub unblockHost
 
     $ipt->delete_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
-    my $x = $DBM{$ip};
-    $x->{expire} = 0;
-    $DBM{$ip} = $x;
+    $nukedb->clearexpire($ip);
 
     $logger->warn("unblocking $ip");
 }
@@ -204,14 +195,14 @@ sub dumpTable
         $logger->warn("  $key $val");
     }
 
-    $logger->warn("Dumping DBM file:");
+    # $logger->warn("Dumping DBM file:");
 
-    while (my ($key, $val) = each %DBM) {
-	my $expire = $val->{expire};
-	my $blocks = $val->{blocks};
+    # while (my ($key, $val) = each %DBM) {
+    # 	my $expire = $val->{expire};
+    # 	my $blocks = $val->{blocks};
 
-	$logger->warn(" $key expire: $expire blocks: $blocks");
-    }
+    # 	$logger->warn(" $key expire: $expire blocks: $blocks");
+    # }
 
 }
 
@@ -228,9 +219,8 @@ sub expireHosts
         else { $ipcount{$ip} -= $config->decay(); }
     }
 
-    while (my ($ip, $val) = each %DBM) {
-	my $expire = $val->{expire};
-        if (($expire) && ($expire < $NOW)) { unblockHost($ip); }
+    foreach my $ip ($nukedb->getexpires($NOW)) {
+	unblockHost($ip);
     }
 }
 
@@ -295,8 +285,8 @@ sub createChain
     $ipt->add_jump_rule('filter', 'INPUT', $config->jumplocation(), $CHAIN);
 
     # add blocked hosts back
-    while (my ($ip, $val) = each %DBM) {
-        if ($val->{expire} > $NOW) { blockHost($ip,1); }
+    foreach my $ip ($nukedb->getactive($NOW)) {
+	blockHost($ip,1);
     }
 }
 
@@ -319,12 +309,9 @@ startlogging($config->log4perl(), $config->debug());
 my $logger = get_logger();
 dumpConfig();
 
-## no critic
+$nukedb = NukeDB->new(DB => $config->dbmfile());
 
-tie %DBM, 'MLDBM', $config->dbmfile(),, O_RDWR | O_CREAT, 0640
-  or $logger->logdie("Unable to open DBM database");
-
-## use critic
+$logger->logdie("Unable to open database") if (initDB());
 
 createChain();
 
