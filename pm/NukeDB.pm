@@ -47,6 +47,18 @@ sub insertexpire
     }
 }
 
+# allow insertion of values explicitly
+sub insert
+{
+    my $this = shift;
+    alias my $dbh = $this->{dbh};
+    my $ip = $dbh->quote(shift @_);
+    my $expire = shift;
+    my $blocks = shift;
+
+    $dbh->do("insert or replace into nukessh VALUES ($ip, $expire,$blocks)");
+}
+
 sub clearexpire
 {
     my $this = shift;
