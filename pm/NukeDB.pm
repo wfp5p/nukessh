@@ -5,6 +5,7 @@ use Carp;
 use DBI;
 use Data::Alias;
 
+our $VERSION = '0.01';
 
 sub new
 {
