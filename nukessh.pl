@@ -145,6 +145,15 @@ sub set_dump
     $poe_kernel->sig_handled();
 }
 
+sub reset_chain
+{
+    my $logger = get_logger();
+    $logger->debug("reset_chain");
+
+    $poe_kernel->post( "expirer", "create_chain", 0);
+    $poe_kernel->sig_handled();
+}
+
 sub blockHost
 {
     my $ip     = shift;
@@ -345,6 +354,7 @@ POE::Session->create(
        log_line => \&process_line,
 		    });
 
+$SIG{USR1} = \&reset_chain;
 $SIG{USR2} = \&set_dump;
 $SIG{TERM} = \&cleanup;
 POE::Kernel->run();
