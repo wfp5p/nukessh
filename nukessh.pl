@@ -309,9 +309,7 @@ startlogging($config->log4perl(), $config->debug());
 my $logger = get_logger();
 dumpConfig();
 
-$nukedb = NukeDB->new(DB => $config->dbmfile());
-
-$logger->logdie("Unable to open database") if (initDB());
+$nukedb = NukeDB->new(DB => $config->dbmfile()) or $logger->logdie("Unable to open database");
 
 createChain();
 
