@@ -1,6 +1,6 @@
 Summary: nuke ssh brute force attempts
 Name: nukessh
-Version: 0.5
+Version: 0.6
 Release: 1
 License: distributable
 Source0: nukessh-%{version}.tar.gz
@@ -10,7 +10,10 @@ Autoreqprov: false
 BuildArchitectures: noarch
 
 Requires: perl(Log::Log4perl)
-Requires: perl(GDBM_File)
+Requires: perl(DBI)
+Requires: perl(DBD::SQLite)
+Requires: perl(Data::Alias)
+Requires: perl(App::Daemon)
 Requires: perl(AppConfig)
 Requires: perl(IPTables::ChainMgr)
 Requires: perl(POE)
@@ -22,29 +25,40 @@ Daemon to detect and block ssh brute force attempts
 %setup
 
 %build
+cd pm
+%{__perl} Makefile.PL INSTALLDIRS=vendor
+make
+
 %install
 
 rm -rf $RPM_BUILD_ROOT
 
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
-mkdir -p $RPM_BUILD_ROOT/var/cache/nukessh
-mkdir -p $RPM_BUILD_ROOT/var/log/nukessh
 mkdir -p $RPM_BUILD_ROOT/usr/sbin/
 
 install -m 555 nukessh.pl  $RPM_BUILD_ROOT/usr/sbin/nukessh
 install -m 544 nukessh $RPM_BUILD_ROOT/etc/init.d/nukessh
+
+cd pm
+make pure_install PERL_INSTALL_ROOT=$RPM_BUILD_ROOT
+find $RPM_BUILD_ROOT -type f -name .packlist -exec rm -f {} \;
+find $RPM_BUILD_ROOT -depth -type d -exec rmdir {} 2>/dev/null \;
+
+%{_fixperms} $RPM_BUILD_ROOT/*
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
+%{perl_vendorlib}/*
 /usr/sbin/nukessh
 /etc/init.d/nukessh
-/var/cache/nukessh
-/var/log/nukessh
 
 %post
+
+mkdir -p /var/cache/nukessh
+mkdir -p /var/log/nukessh
 
 chkconfig --add nukessh
 chkconfig nukessh on
