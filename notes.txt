@@ -1,5 +1,0 @@
--- shared ips for multiple machines 
-
--- use IPTables::ChainMgr?
-
--- use threads?
