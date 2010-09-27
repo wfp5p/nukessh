@@ -311,7 +311,7 @@ dumpConfig();
 
 $nukedb = NukeDB->new(DB => $config->dbmfile()) or $logger->logdie("Unable to open database");
 
-createChain();
+
 
 if ($config->hardcore) {
     $logger->warn("nukessh started in hardcore mode");
@@ -326,7 +326,9 @@ POE::Session->create(
        _start => sub {
 	   $_[KERNEL]->alias_set("expirer");
 	   $_[KERNEL]->delay(expire => $config->cycle);
+	   $_[KERNEL]->yield('create_chain');
 	   },
+       create_chain => \&createChain,
        sig_usr2 => \&dumpTable,
        expire => sub {
 	   expireHosts();
