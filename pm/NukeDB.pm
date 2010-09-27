@@ -21,6 +21,9 @@ sub new
                                     expire integer default 0,
                                     blocks integer default 0)");
     }
+    else {
+	$this->{dbh}->do("vacuum");
+    }
 
     bless $this, $class;
     return $this;
