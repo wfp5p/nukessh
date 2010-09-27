@@ -20,11 +20,19 @@ sub new
     if ($#tables == -1) {
 	$this->{dbh}->do("create table nukessh (ip text primary key,
                                     expire integer default 0,
-                                    blocks integer default 0)");
+                                    blocks integer default 0,
+                                    lastupdate TIMESTAMP)");
     }
     else {
 	$this->{dbh}->do("vacuum");
     }
+
+    $this->{dbh}->do("create trigger if not exists mktime_insert after insert on nukessh begin
+                      update nukessh set lastupdate=strftime('%s','now') where
+                      ip = new.ip;end;");
+    $this->{dbh}->do("create trigger if not exists mktime_update after update on nukessh begin
+                      update nukessh set lastupdate=strftime('%s','now') where
+                      ip = new.ip;end;");
 
     bless $this, $class;
     return $this;
@@ -44,7 +52,7 @@ sub insertexpire
 	    $dbh->do("update nukessh set expire=$expire, blocks=blocks + 1 where ip=$ip");
 	}
     } else {
-	$dbh->do("insert into nukessh VALUES ($ip, $expire,1)");
+	$dbh->do("insert into nukessh (ip, expire, blocks) VALUES ($ip, $expire,1)");
     }
 }
 
@@ -57,7 +65,7 @@ sub insert
     my $expire = shift;
     my $blocks = shift;
 
-    $dbh->do("insert or replace into nukessh VALUES ($ip, $expire,$blocks)");
+    $dbh->do("insert or replace into nukessh (ip, expire, blocks) VALUES ($ip, $expire,$blocks)");
 }
 
 sub clearexpire
