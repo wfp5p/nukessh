@@ -91,6 +91,19 @@ sub getexpires
     return @x;
 }
 
+# return total number of times an IP has been blocked
+sub getblocks
+{
+    my $this = shift;
+    alias my $dbh = $this->{dbh};
+    my $ip = $dbh->quote(shift @_);
+
+    my @x = $dbh->selectrow_array("select blocks from nukessh where ip=$ip");
+    return 0 if ($#x == -1);
+
+    return $x[0];
+}
+
 sub getactive
 {
     my $this = shift;
