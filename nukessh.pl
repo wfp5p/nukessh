@@ -157,7 +157,7 @@ sub reset_chain
 sub blockHost
 {
     my $ip     = shift;
-    my $force  = shift;
+    my $noupdate = shift;
     my $logger = get_logger();
     my $NOW = time();
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
@@ -174,7 +174,7 @@ sub blockHost
 
     my $expire = $NOW + ($config->blocktime() * (2**$nukedb->getblocks($ip)));
     # add to DB, remove from ipcount
-    $nukedb->insertexpire($ip, $expire) if (!$force);
+    $nukedb->insertexpire($ip, $expire) if (!$noupdate);
 
     delete $ipcount{$ip};
     return;
