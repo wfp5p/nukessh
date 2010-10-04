@@ -172,8 +172,9 @@ sub blockHost
     $logger->warn("blocking $ip");
     $ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
 
+    my $expire = $NOW + ($config->blocktime() * (2**$nukedb->getblocks($ip)));
     # add to DB, remove from ipcount
-    $nukedb->insertexpire($ip, $NOW + $config->blocktime()) if (!$force);
+    $nukedb->insertexpire($ip, $expire) if (!$force);
 
     delete $ipcount{$ip};
     return;
@@ -319,8 +320,6 @@ my $logger = get_logger();
 dumpConfig();
 
 $nukedb = NukeDB->new(DB => $config->dbmfile()) or $logger->logdie("Unable to open database");
-
-
 
 if ($config->hardcore) {
     $logger->warn("nukessh started in hardcore mode");
