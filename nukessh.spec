@@ -1,6 +1,6 @@
 Summary: nuke ssh brute force attempts
 Name: nukessh
-Version: 0.6
+Version: 0.7
 Release: 1
 License: distributable
 Source0: nukessh-%{version}.tar.gz
