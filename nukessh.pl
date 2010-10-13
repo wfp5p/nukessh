@@ -33,6 +33,28 @@ my %ipt_opts = (
 my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
 		  munin mysql news gopher mail r00t);
 
+
+# used for time calcs
+sub set_max
+{
+    my ($small, $max, $large) = @_;
+
+    $large += int($small / $max);
+    $small = ($small < 0) ? ($small % -$max) : ($small % $max);
+    return ($small, $large);
+}
+
+# take seconds, return hour::minutes
+sub get_hm
+{
+    my $seconds = shift;
+    my ($mins, $hours);
+    ($seconds, $mins)  = set_max($seconds, 60, $mins);
+    ($mins, $hours) = set_max($mins, 60, $hours);
+
+    return sprintf("%02d:%02d", $hours, $mins);
+}
+
 sub validateNumber # only valid if number >0
 {
     my ($varname, $value) = @_;
@@ -154,6 +176,7 @@ sub reset_chain
     $poe_kernel->sig_handled();
 }
 
+
 sub blockHost
 {
     my $ip     = shift;
@@ -163,18 +186,18 @@ sub blockHost
     my $ipt    = new IPTables::ChainMgr(%ipt_opts)
       or $logger->logdie("ChainMgr failed");
 
-    # try not to add a host to the tables twice 7!
-    # if ( (!$force) && (defined $DBM{$ip}) && ($DBM{$ip}->{expire} > $NOW) ) {
-    # 	$logger->trace("possible attempt to block $ip twice");
-    # 	return;
-    # }
+    if (!$noupdate) {
+	my $blockduration = $config->blocktime() * (2**$nukedb->getblocks($ip));
+	my $dstr = get_hm($blockduration);
+	$logger->warn("blocking $ip for $dstr");
+	my $expire = $NOW + $blockduration;
+	$nukedb->insertexpire($ip, $expire);
+    }
+    else {
+	$logger->warn("blocking $ip");
+    }
 
-    $logger->warn("blocking $ip");
     $ipt->append_ip_rule($ip, '0.0.0.0/0', 'filter', $CHAIN, 'DROP');
-
-    my $expire = $NOW + ($config->blocktime() * (2**$nukedb->getblocks($ip)));
-    # add to DB, remove from ipcount
-    $nukedb->insertexpire($ip, $expire) if (!$noupdate);
 
     delete $ipcount{$ip};
     return;
