@@ -68,6 +68,16 @@ sub insert
     $dbh->do("insert or replace into nukessh (ip, expire, blocks) VALUES ($ip, $expire,$blocks)");
 }
 
+# purge records where expire = 0 and lastupdate <= param
+sub purge
+{
+    my $this = shift;
+    alias my $dbh = $this->{dbh};
+    my $purgetime = shift;
+
+    return $dbh->do("delete from nukessh where expire=0 and lastupdate <= $purgetime");
+}
+
 sub clearexpire
 {
     my $this = shift;

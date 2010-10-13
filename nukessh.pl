@@ -234,6 +234,19 @@ sub expireHosts
     }
 }
 
+# delete unblocked hosts older than 60 days
+sub purgeOldRecords
+{
+    my $entry;
+    my $purgetime = time() - (60 * 24 * 60 * 60);
+    my $logger = get_logger();
+
+    $logger->debug("purging old records");
+
+    my $x = $nukedb->purge($purgetime);
+    $logger->warn("$x records older than $purgetime purged from database") if ($x);
+}
+
 sub dumpConfig
 {
 
@@ -334,10 +347,15 @@ POE::Session->create(
        _start => sub {
 	   $_[KERNEL]->alias_set("expirer");
 	   $_[KERNEL]->delay(expire => $config->cycle);
+	   $_[KERNEL]->delay(daily_expire => 86400);
 	   $_[KERNEL]->yield('create_chain');
 	   },
        create_chain => \&createChain,
        sig_usr2 => \&dumpTable,
+       daily_expire => sub {
+	   purgeOldRecords();
+	   $_[KERNEL]->delay(daily_expire => 86400);
+       },
        expire => sub {
 	   expireHosts();
 	   $_[KERNEL]->delay(expire => $config->cycle);
