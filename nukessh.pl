@@ -20,6 +20,7 @@ my $config    = AppConfig->new();
 
 our $nukedb;
 our %ipcount;
+our %users;
 
 # options for IPTables::ChainMgr
 my %ipt_opts = (
@@ -140,6 +141,7 @@ sub doconfigure
                     });
 
     $config->define('debug', { ARGS => '!' });
+    $config->define('trackusers', { ARGS => '!' });
     $config->define('hardcore', { ARGS => '!' });
 
     $config->getopt();
@@ -228,15 +230,13 @@ sub dumpTable
         $logger->warn("  $key $val");
     }
 
-    # $logger->warn("Dumping DBM file:");
+    return if (!$config->trackusers());
 
-    # while (my ($key, $val) = each %DBM) {
-    # 	my $expire = $val->{expire};
-    # 	my $blocks = $val->{blocks};
+    $logger->warn("Dumping users seen:");
 
-    # 	$logger->warn(" $key expire: $expire blocks: $blocks");
-    # }
-
+    while (my ($key, $val) = each %users) {
+        $logger->warn("  $key $val");
+    }
 }
 
 sub expireHosts
@@ -417,6 +417,7 @@ sub process_line
     {
         my ($user,$ip) = ($1,$2);
 
+	$users{$user}++ if ($config->trackusers());
         $ipcount{$ip}++;
 
 	if ( ($config->hardcore()) && (first {$user eq $_} @badusers) ) {
