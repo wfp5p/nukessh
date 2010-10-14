@@ -31,7 +31,7 @@ my %ipt_opts = (
 
 # for hardcore mode, any attempt to log into these gets and immediate nuke
 my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
-		  munin mysql news gopher mail r00t);
+		  munin mysql news gopher mail r00t oracle test);
 
 
 # used for time calcs
