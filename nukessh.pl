@@ -266,8 +266,8 @@ sub purgeOldRecords
 
     $logger->debug("purging old records");
 
-    my $x = $nukedb->purge($purgetime);
-    $logger->warn("$x records older than $purgetime purged from database") if ($x);
+    $nukedb->purge($purgetime);
+    $logger->warn("records older than $purgetime purged from database");
 }
 
 sub dumpConfig
@@ -356,6 +356,7 @@ my $logger = get_logger();
 dumpConfig();
 
 $nukedb = NukeDB->new(DB => $config->dbmfile()) or $logger->logdie("Unable to open database");
+purgeOldRecords();
 
 if ($config->hardcore) {
     $logger->warn("nukessh started in hardcore mode");
