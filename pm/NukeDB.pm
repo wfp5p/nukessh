@@ -75,7 +75,8 @@ sub purge
     alias my $dbh = $this->{dbh};
     my $purgetime = shift;
 
-    return $dbh->do("delete from nukessh where expire=0 and lastupdate <= $purgetime");
+    $dbh->do("delete from nukessh where expire=0 and lastupdate <= $purgetime");
+    $dbh->do("vacuum");
 }
 
 sub clearexpire
