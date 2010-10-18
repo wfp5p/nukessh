@@ -32,7 +32,8 @@ my %ipt_opts = (
 
 # for hardcore mode, any attempt to log into these gets and immediate nuke
 my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
-		  munin mysql news gopher mail r00t oracle test);
+		  munin mysql news gopher mail r00t oracle test webmaster
+		  );
 
 
 # used for time calcs
@@ -267,7 +268,7 @@ sub purgeOldRecords
     $logger->debug("purging old records");
 
     $nukedb->purge($purgetime);
-    $logger->warn("records older than $purgetime purged from database");
+    $logger->debug("records older than $purgetime purged from database");
 }
 
 sub dumpConfig
