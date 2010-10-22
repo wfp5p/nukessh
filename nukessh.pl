@@ -190,11 +190,16 @@ sub blockHost
       or $logger->logdie("ChainMgr failed");
 
     if (!$noupdate) {
-	my $blockduration = $config->blocktime() * (2**$nukedb->getblocks($ip));
-	my $dstr = get_hm($blockduration);
-	$logger->warn("blocking $ip for $dstr");
-	my $expire = $NOW + $blockduration;
-	$nukedb->insertexpire($ip, $expire);
+	my ($expire, $blocks, $lastupdate) = $nukedb->getinfo($ip);
+	if ( (!defined $expire) || ($expire == 0) ) {
+	    # it's not currently blocked
+	    $blocks = 0 if (!defined $blocks);
+	    my $blockduration = $config->blocktime() * (2**$blocks);
+	    my $dstr = get_hm($blockduration);
+	    $logger->warn("blocking $ip for $dstr");
+	    my $expire = $NOW + $blockduration;
+	    $nukedb->insertexpire($ip, $expire);
+	}
     }
     else {
 	$logger->warn("blocking $ip");
