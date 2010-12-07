@@ -115,6 +115,18 @@ sub getinfo
     return @x;
 }
 
+# get all records as
+# [ ip expire blocks lastupdate ]
+sub dump
+{
+    my $this = shift;
+    alias my $dbh = $this->{dbh};
+
+    my $x = $dbh->selectall_arrayref("select ip, expire, blocks, lastupdate from nukessh");
+
+    return $x;
+}
+
 sub getactive
 {
     my $this = shift;
