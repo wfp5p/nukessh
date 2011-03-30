@@ -427,7 +427,7 @@ sub process_line
 	$users{$user}++ if ($config->trackusers());
         $ipcount{$ip}++;
 
-	if ( ($config->hardcore()) && (first {$user eq $_} @badusers) ) {
+	if ( ($config->hardcore()) && ($user ~~ @badusers) ) {
 	    $logger->warn("$ip wins the bonus round with $user!");
 	    $ipcount{$ip} += $config->threshold() + 1;
 	}
