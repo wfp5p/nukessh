@@ -3,9 +3,8 @@ package NukeDB;
 use strict;
 use Carp;
 use DBI;
-use Data::Alias;
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 sub new
 {
@@ -42,7 +41,7 @@ sub new
 sub insertexpire
 {
     my $this = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
     my $ip = $dbh->quote(shift @_);
     my $expire = shift;
 
@@ -60,7 +59,7 @@ sub insertexpire
 sub insert
 {
     my $this = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
     my $ip = $dbh->quote(shift @_);
     my $expire = shift;
     my $blocks = shift;
@@ -72,7 +71,7 @@ sub insert
 sub purge
 {
     my $this = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
     my $purgetime = shift;
 
     $dbh->do("delete from nukessh where expire=0 and lastupdate <= $purgetime");
@@ -82,7 +81,7 @@ sub purge
 sub clearexpire
 {
     my $this = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
     my $ip = $dbh->quote(shift @_);
 
     $dbh->do("update nukessh set expire=0 where ip=$ip");
@@ -93,7 +92,7 @@ sub getexpires
 {
     my $this = shift;
     my $now = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
 
     my $x = $dbh->selectall_arrayref("select ip from nukessh where expire > 0 and expire <= $now");
 
@@ -107,7 +106,7 @@ sub getexpires
 sub getinfo
 {
     my $this = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
     my $ip = $dbh->quote(shift @_);
 
     my @x = $dbh->selectrow_array("select expire, blocks, lastupdate from nukessh where ip=$ip");
@@ -120,7 +119,7 @@ sub getinfo
 sub dump
 {
     my $this = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
 
     my $x = $dbh->selectall_arrayref("select ip, expire, blocks, lastupdate from nukessh");
 
@@ -131,7 +130,7 @@ sub getactive
 {
     my $this = shift;
     my $now = shift;
-    alias my $dbh = $this->{dbh};
+    my $dbh = $this->{dbh};
 
     my $x = $dbh->selectall_arrayref("select ip from nukessh where expire != 0 and expire > $now");
 
@@ -139,7 +138,5 @@ sub getactive
 
     return @x;
 }
-
-
 
 1;
