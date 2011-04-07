@@ -1,13 +1,15 @@
-Summary: nuke ssh brute force attempts
+Summary: Nuke ssh brute force attempts
 Name: nukessh
 Version: 0.8
 Release: 1
-License: distributable
+License: GPLv2+ or Artistic
 Source0: nukessh-%{version}.tar.gz
 Buildroot: %{_tmppath}/%{name}-%{version}-root
 Group: System Environment/Base
 Autoreqprov: false
 BuildArchitectures: noarch
+
+BuildRequires:  perl(ExtUtils::MakeMaker)
 
 Requires: perl(Log::Log4perl)
 Requires: perl(DBI)
@@ -21,7 +23,7 @@ Requires: perl(POE)
 Daemon to detect and block ssh brute force attempts
 
 %prep
-%setup
+%setup -q
 
 %build
 cd pm
@@ -48,6 +50,7 @@ find $RPM_BUILD_ROOT -depth -type d -exec rmdir {} 2>/dev/null \;
 %clean
 rm -rf $RPM_BUILD_ROOT
 
+
 %files
 %defattr(-,root,root)
 %{perl_vendorlib}/*
@@ -63,8 +66,13 @@ chkconfig --add nukessh
 chkconfig nukessh on
 
 %preun
+if [ $1 = 0 ]; then
+   /sbin/service nukessh stop
+   /sbin/chkconfig --del nukessh
+fi
 
-#/sbin/service nukessh stop
 
-%postun
+%changelog
 
+* Thu Apr  7 2011 Bill Pemberton <wfp5p@virginia.edu> - 0.8-1
+- Something
