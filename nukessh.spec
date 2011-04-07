@@ -1,6 +1,6 @@
 Summary: nuke ssh brute force attempts
 Name: nukessh
-Version: 0.7
+Version: 0.8
 Release: 1
 License: distributable
 Source0: nukessh-%{version}.tar.gz
@@ -12,7 +12,6 @@ BuildArchitectures: noarch
 Requires: perl(Log::Log4perl)
 Requires: perl(DBI)
 Requires: perl(DBD::SQLite)
-Requires: perl(Data::Alias)
 Requires: perl(App::Daemon)
 Requires: perl(AppConfig)
 Requires: perl(IPTables::ChainMgr)
