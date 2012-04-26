@@ -125,7 +125,7 @@ sub doconfigure
     # how long does a host stay blocked in seconds
     $config->define('blocktime',
                     {  ARGS    => '=i',
-                       DEFAULT => '43200',
+                       DEFAULT => '86400', # 24 hours
 		       VALIDATE => \&validateNumber
                     });
 
