@@ -1,0 +1,13 @@
+[Unit]
+Description=Nuke ssh brute force attempts
+After=network.target syslog.target iptables.service
+
+[Service]
+EnvironmentFile=-/etc/sysconfig/nukessh
+ExecStart=/usr/sbin/nukessh --nodaemon $OPTIONS
+PrivateTmp=true
+
+
+[Install]
+WantedBy=multi-user.target
+

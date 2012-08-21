@@ -1,0 +1,2 @@
+# OPTIONS="--configfile=/etc/nukessh.conf"
+# OPTIONS="--threshold=30 --hardcore"
