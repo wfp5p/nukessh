@@ -1,7 +1,7 @@
 Summary: Nuke ssh brute force attempts
 Name: nukessh
 Version: 0.9
-Release: 1%{?dist}
+Release: 2%{?dist}
 License: WTFPL
 Source0: nukessh-%{version}.tar.gz
 Group: System Environment/Base
