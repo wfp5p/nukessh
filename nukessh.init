@@ -14,16 +14,13 @@ prog="nukessh"
 pidfile="/var/run/nukessh.pid"
 lockfile=/var/lock/subsys/$prog
 
-OPTIONS="-pidfile=$pidfile"
-
 [ -e /etc/sysconfig/$prog ] && . /etc/sysconfig/$prog
-
 
 start() {
      [ "$EUID" != "0" ] && exit 4
      [ -x $binary ] || exit 5
      echo -n $"Starting $prog: "
-     daemon $prog $OPTIONS
+     daemon $prog -pidfile=$pidfile ${OPTIONS}
      RETVAL=$?
      echo
      [ $RETVAL -eq 0 ] && touch $lockfile
