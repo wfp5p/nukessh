@@ -34,7 +34,7 @@ my %ipt_opts = (
 my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
 		  munin mysql news gopher mail r00t oracle test webmaster
 		  admin guest nagios john ftp ftpuser bin system samba itc
-		  staff viridian git
+		  staff viridian git teamspeak mcgrath
 		  );
 
 
