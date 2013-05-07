@@ -138,6 +138,13 @@ sub doconfigure
 		       VALIDATE => \&validateNumber
                     });
 
+    # how many root failures before a host is blocked
+    $config->define('threshold_root',
+                    {  ARGS    => '=i',
+                       DEFAULT => '6',
+		       VALIDATE => \&validateNumber
+                    });
+
     # fork in background
     $config->define('daemon',
                     {  ARGS    => '!',
@@ -437,6 +444,16 @@ sub process_line
 
 	$users{$user}++ if ($config->trackusers());
         $ipcount{$ip}{count}++;
+
+	if ($user eq 'root') {
+	    $ipcount{$ip}{root}++;
+
+	    if ($ipcount{$ip}{root} >= $config->threshold_root()) {
+		$logger->warn("$ip too many root attempts");
+		$ipcount{$ip}{count} += $config->threshold() + 1;
+	    }
+	}
+
 
 	if ( ($config->hardcore()) && ($user ~~ @badusers) ) {
 	    $logger->warn("$ip wins the bonus round with $user");
