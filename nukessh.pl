@@ -34,7 +34,8 @@ my %ipt_opts = (
 my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
 		  munin mysql news gopher mail r00t oracle test webmaster
 		  admin guest nagios john ftp ftpuser bin system samba itc
-		  staff viridian git teamspeak mcgrath
+		  staff viridian cthulhu git teamspeak mcgrath eggdrop
+		  deploy bugzilla
 		  );
 
 
@@ -430,7 +431,7 @@ sub process_line
         $ipcount{$ip}++;
 
 	if ( ($config->hardcore()) && ($user ~~ @badusers) ) {
-	    $logger->warn("$ip wins the bonus round with $user!");
+	    $logger->warn("$ip wins the bonus round with $user");
 	    $ipcount{$ip} += $config->threshold() + 1;
 	}
 
