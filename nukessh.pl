@@ -236,7 +236,10 @@ sub dumpTable
     $logger->warn("Dumping ipcounts table:");
 
     while (my ($key, $val) = each %ipcount) {
-        $logger->warn("  $key $val");
+	my $count = $val->{count};
+	my $roots = $val->{root};
+
+        $logger->warn("  $key count $count roots $roots");
     }
 
     return if (!$config->trackusers());
@@ -256,9 +259,14 @@ sub expireHosts
 
     $logger->debug("Doing expire.....");
 
-    while (my ($ip, $count) = each %ipcount) {
-        if ($count <= $config->decay()) { delete $ipcount{$ip}; }
-        else { $ipcount{$ip} -= $config->decay(); }
+    while (my ($ip, $val) = each %ipcount) {
+        if ($val->{count} <= $config->decay()) {
+	    delete $ipcount{$ip};
+	}
+        else {
+	    $ipcount{$ip}{count} -= $config->decay();
+	    delete $ipcount{$ip}{root};
+	}
     }
 
     foreach my $ip ($nukedb->getexpires($NOW)) {
@@ -428,13 +436,13 @@ sub process_line
         my ($user,$ip) = ($1,$2);
 
 	$users{$user}++ if ($config->trackusers());
-        $ipcount{$ip}++;
+        $ipcount{$ip}{count}++;
 
 	if ( ($config->hardcore()) && ($user ~~ @badusers) ) {
 	    $logger->warn("$ip wins the bonus round with $user");
-	    $ipcount{$ip} += $config->threshold() + 1;
+	    $ipcount{$ip}{count} += $config->threshold() + 1;
 	}
 
-        blockHost($ip) if ($ipcount{$ip} > $config->threshold());
+        blockHost($ip) if ($ipcount{$ip}{count} > $config->threshold());
     }
 }
