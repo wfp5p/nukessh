@@ -134,7 +134,7 @@ sub doconfigure
     # how many failures before a host is blocked
     $config->define('threshold',
                     {  ARGS    => '=i',
-                       DEFAULT => '100',
+                       DEFAULT => '50',
 		       VALIDATE => \&validateNumber
                     });
 
