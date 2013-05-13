@@ -35,7 +35,8 @@ my @badusers = qw(nobody apache tomcat postgres zabbix squid postfix
 		  munin mysql news gopher mail r00t oracle test webmaster
 		  admin guest nagios john ftp ftpuser bin system samba itc
 		  staff viridian cthulhu git teamspeak mcgrath eggdrop
-		  deploy bugzilla
+		  deploy bugzilla administrator testuser www
+		  sfdjlkfkjd fskjl32l32 navy marine
 		  );
 
 
