@@ -326,6 +326,7 @@ log4perl.rootLogger=WARN, LOGFILE
 log4perl.appender.LOGFILE=Log::Log4perl::Appender::File
 log4perl.appender.LOGFILE.filename=$logfile
 log4perl.appender.LOGFILE.mode=append
+log4perl.appender.LOGFILE.umask=0022
 
 log4perl.appender.LOGFILE.layout=PatternLayout
 log4perl.appender.LOGFILE.layout.ConversionPattern=\%d \%F - \%m\%n
