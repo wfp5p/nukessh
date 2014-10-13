@@ -1,7 +1,7 @@
 Summary: Nuke ssh brute force attempts
 Name: nukessh
 Version: 0.9.2
-Release: 1%{?dist}
+Release: 2%{?dist}
 License: WTFPL
 Source0: nukessh-%{version}.tar.gz
 Group: System Environment/Base
@@ -10,7 +10,7 @@ BuildArchitectures: noarch
 BuildRequires:  perl(ExtUtils::MakeMaker)
 Requires: perl(DBD::SQLite)
 
-%if 0%{?rhel}
+%if 0%{?rhel} == 6
 Requires(post): /sbin/chkconfig
 Requires(preun): /sbin/chkconfig
 Requires(preun): /sbin/service
@@ -43,7 +43,7 @@ mkdir -p $RPM_BUILD_ROOT/usr/sbin/
 
 install -m 555 nukessh.pl  $RPM_BUILD_ROOT/usr/sbin/nukessh
 
-%if 0%{?rhel}
+%if 0%{?rhel} == 6
 mkdir -p $RPM_BUILD_ROOT/etc/init.d
 install -m 544 nukessh.init $RPM_BUILD_ROOT/etc/init.d/nukessh
 %else
@@ -69,7 +69,7 @@ rm -rf $RPM_BUILD_ROOT
 %{perl_vendorlib}/*
 /usr/sbin/nukessh
 
-%if 0%{?rhel}
+%if 0%{?rhel} == 6
 /etc/init.d/nukessh
 %else
 %config(noreplace) %{_sysconfdir}/sysconfig/nukessh
@@ -81,7 +81,7 @@ rm -rf $RPM_BUILD_ROOT
 mkdir -p /var/cache/nukessh
 mkdir -p /var/log/nukessh
 
-%if 0%{?rhel}
+%if 0%{?rhel} == 6
 chkconfig --add nukessh
 chkconfig nukessh on
 %else
@@ -90,7 +90,7 @@ chkconfig nukessh on
 
 %preun
 if [ $1 = 0 ]; then
-%if 0%{?rhel}
+%if 0%{?rhel} == 6
    /sbin/service nukessh stop
    /sbin/chkconfig --del nukessh
 %else
@@ -101,6 +101,9 @@ fi
 
 
 %changelog
+* Mon Oct 13 2014 Bill Pemberton <wfp5p@worldbroken.com> - 0.9.2-2
+- Update for RHEL 7
+
 * Tue Aug 21 2012 Bill Pemberton <wfp5p@virginia.edu> - 0.9-1
 - Make RHEL and Fedora version
 
