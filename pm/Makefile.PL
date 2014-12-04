@@ -8,6 +8,6 @@ WriteMakefile (
  			  'DBD::SQLite' =>  '1.29',
  			 },
      ABSTRACT          => 'SQLite module for nukessh',
-     AUTHOR         => 'Bill Pemberton <wfp5p@virginia.edu>',
+     AUTHOR         => 'Bill Pemberton <wfp5p@worldbroken.com>',
     LICENSE      => 'perl',
 );
